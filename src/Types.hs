@@ -1,7 +1,6 @@
 module Mu.Types where
 
 import Data.Default
-import Data.HashMap.Lazy
 
 type Point = (Int, Int)
 
@@ -15,7 +14,6 @@ data Attr = Foreground Color
 
 -- (Position, Length, Attribute)
 type TextAttr = (Int, Int, [Attr])
-
 
 data Buffer = Buffer {
     bufCurs :: Int,
@@ -71,9 +69,6 @@ data PlugIn = PlugIn {
 instance Show PlugIn where
     show p = show $ plugLevel p
 
-instance Read PlugIn where
-    readsPrec d = \s -> [(PlugIn (read s) return, s)]
-
 -- The head of edBufs is the active buffer.
 data Editor = Editor {
     edState   :: State,
@@ -82,7 +77,10 @@ data Editor = Editor {
     edBuffers :: [(String, Buffer)],
     edVars    :: [(String, String)],
     edPlugIns :: [PlugIn]
-}
+} deriving (Show)
 
 instance Default Editor where
     def = Editor Insert None "" [] [] []
+
+mainBuf :: String
+mainBuf = "main"

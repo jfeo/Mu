@@ -7,26 +7,37 @@ import Mu.Types
 import Mu.Utils
 import Data.Default
 
-m = "main"
-mainBuf = def { bufPos = (0, 0),
-                bufText = "smiler til kings",
-                bufAttr = [( 1, 5, [Foreground (5, 0, 2)]),
-                           (10, 5, [Foreground (2, 0, 5)])] }
-firstEd = def { edActive = m }
+color1 :: Color
+color1 = (5,5,5)
+
+color2 :: Color
+color2 = (1,2,0)
 
 loop :: Editor -> IO ()
 loop ed = do
-    -- fix
-    ed1 <- getInput ed
-    let ed2 = changeState ed1
-    display ed2
-    loop ed2
+    ed'  <- getInput ed
+    ed'' <- changeState ed'
+    _    <- display ed''
+    loop ed''
 
 main :: IO ()
 main = do
-    startInput
     (w, h) <- termSize
-    let ed1  = addBuffer m mainBuf firstEd
-        ed2  = changeBuffer m ed1 $ \b ->
-          b { bufSize = (w, h-2) }
-    loop ed2
+    let at = [(0,w,[Foreground color1,
+                    Background color2])]
+        st = def { bufSize = (w, 1),
+                   bufText = "Mu Editor",
+                   bufAttr = at }
+        mn = def { bufPos  = (0, 1),
+                   bufSize = (w, h-2),
+                   bufAttr = [] }
+        cm = def { bufPos  = (0, h-1),
+                   bufSize = (w, 1),
+                   bufText = "command-bar",
+                   bufAttr = at }
+        ed = def { edActive = mainBuf,
+                   edBuffers = [("status",  st),
+                                ("main",    mn),
+                                ("command", cm)]}
+    startInput
+    loop ed

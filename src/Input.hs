@@ -23,8 +23,12 @@ parseInput "\ESC\ESC[A" = MUpArr
 parseInput "\ESC\ESC[B" = MDownArr
 parseInput "\ESC\ESC[C" = MRightArr
 parseInput "\ESC\ESC[D" = MLeftArr
-parseInput s            = Chars s 
+parseInput s            = Chars $ filter (\c -> not $ c `elem` nonchar) s
 
+nonchar :: [Char]
+nonchar = "\ESC"
+
+waitOn :: [Char]
 waitOn = "\ESC["
 
 getRest :: IO String
