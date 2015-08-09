@@ -28,14 +28,14 @@ termw :: IO Int
 termw = do
     s <- Term.size
     case s of
-      Nothing -> return 0
+      Nothing -> fail "Could not find terminal width [termw]."
       Just w  -> return $ Term.width w
 
 termh :: IO Int
 termh = do
     s <- Term.size
     case s of
-      Nothing -> return 0
+      Nothing -> fail "Could not find terminal height [termh]."
       Just w  -> return $ Term.height w
 
 termSize :: IO (Int, Int)

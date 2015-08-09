@@ -1,43 +1,53 @@
 module Main where
 
+import Mu.Commands
 import Mu.Display
+import Mu.Info
 import Mu.Input
 import Mu.State
 import Mu.Types
-import Mu.Utils
 import Data.Default
+import Data.List (sortBy)
 
 color1 :: Color
-color1 = (5,5,5)
+color1 = (5, 5, 5)
 
 color2 :: Color
-color2 = (1,2,0)
+color2 = (0, 0, 1)
 
 loop :: Editor -> IO ()
 loop ed = do
-    ed'  <- getInput ed
-    ed'' <- changeState ed'
-    _    <- display ed''
-    loop ed''
+    let cmds = sortBy (\ c1 c2 -> (cmdLevel c1) `compare` (cmdLevel c2))
+             $ filter cmdStarted
+             $ map snd
+             $ edCommands ed
+    ed' <- run cmds ed
+    loop ed'
 
 main :: IO ()
 main = do
-    (w, h) <- termSize
-    let at = [(0,w,[Foreground color1,
-                    Background color2])]
-        st = def { bufSize = (w, 1),
-                   bufText = "Mu Editor",
-                   bufAttr = at }
-        mn = def { bufPos  = (0, 1),
-                   bufSize = (w, h-2),
-                   bufAttr = [] }
-        cm = def { bufPos  = (0, h-1),
-                   bufSize = (w, 1),
-                   bufText = "command-bar",
-                   bufAttr = at }
-        ed = def { edActive = mainBuf,
-                   edBuffers = [("status",  st),
-                                ("main",    mn),
-                                ("command", cm)]}
+    let input = def { cmdLevel   = 4,
+                      cmdFun     = getInput,
+                      cmdStarted = True }
+        state = def { cmdLevel   = 8,
+                      cmdFun     = changeState,
+                      cmdStarted = True }
+        info = def { cmdLevel   = 12,
+                     cmdFun     = setInfo,
+                     cmdStarted = True }
+        draw = def { cmdLevel   = 16,
+                     cmdFun     = display,
+                     cmdStarted = True }
+        cs = [("core_input", input), 
+              ("core_state", state),
+              ("core_info", info),
+              ("core_display", draw)]
+        as = [Foreground color1, Background color2]
+        bs = [(mainBuf, def),
+              (statusBuf,  def {bufDefAttr = as}),
+              (commandBuf, def {bufDefAttr = as})]
+    let ed = def { edActive   = mainBuf,
+                   edBuffers  = bs,
+                   edCommands = cs ++ shippedCommands}
     startInput
-    loop ed
+    loop $ ed

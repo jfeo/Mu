@@ -10,7 +10,8 @@ parseInput :: String -> Input
 parseInput ""           = None
 parseInput "\t"         = Chars "  "
 parseInput "\ESC"       = Escape
-parseInput "\DEL"       = Delete
+parseInput "\DEL"       = Backspace
+parseInput "\ESC[3~"    = Delete
 parseInput "\ESC[A"     = UpArr
 parseInput "\ESC[B"     = DownArr
 parseInput "\ESC[C"     = RightArr
@@ -43,11 +44,15 @@ getRest = do
 
 getRaw :: IO String
 getRaw = do
-    c <- hGetChar stdin
-    r <- case c `elem` waitOn of
-           True  -> getRest
-           False -> return ""
-    return $ c : r
+    w <- hWaitForInput stdin 50
+    if w then do
+      c <- hGetChar stdin
+      r <- case c `elem` waitOn of
+             True  -> getRest
+             False -> return ""
+      return $ c : r
+    else do
+      return ""
 
 startInput :: IO ()
 startInput = do

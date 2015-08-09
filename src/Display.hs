@@ -11,10 +11,11 @@ display :: Editor -> IO Editor
 display ed = do
   clearScreen
   let bufs = edBuffers ed
+      act  = edActive ed
   sequence_ $ map (\ (_, b) -> displayBuffer b) bufs
-  case getBuffer "main" ed of
-    Nothing -> putStrLn "Not main buffer!"
-    Just b  -> do
+  case getBuffer act ed of
+    Nothing -> fail $ "Could not find main buffer: " ++ act
+    Just b -> do
        let (k, r) = cursTwo b
            (x, y) = bufPos b
            (u, v) = (k + x, r + y)
@@ -28,35 +29,42 @@ displayBuffer b = do
     let t = bufText b
         o = bufOff b
         a = bufAttr b
-        (w,h) = bufSize b
-        (xMin,yMin) = bufPos b
-    (termH,termW) <- termSize
+        f = bufDefAttr b
+        (w, h) = bufSize b
+        (xMin, yMin) = bufPos b
+    (termW, termH) <- termSize
     let xMax = min (xMin + w) termW
         yMax = min (yMin + h) termH
-        utf = displayText xMin xMax yMax t a xMin yMin o
+        utf = displayText xMin xMax yMax t a f xMin yMin o
         set = curSet xMin yMin
-    putUtfStr $ set ++ utf ++ reset
+        fot = escAttr f
+    putUtfStr $ set ++ fot ++ utf ++ reset
 
-displayText :: Int -> Int -> Int -> String -> [TextAttr] ->
+displayText :: Int -> Int -> Int -> 
+               String -> [TextAttr] -> [Attr] ->
                Int -> Int -> Int -> String
-displayText xMin xMax yMax text attr x y i
-  | i >= l = ""
-  | x >= xMax = nextLine i
-  | y >= yMax = ""
-  | c == '\n' = nextLine (i + 1)
+displayText xMin xMax yMax text attr footer x y i
+  | i >= l = "" ++ pad ++ linePad
+  | y >= yMax = "" ++ pad
+  | x >= xMax = aesc ++ pad ++ nextLine i
+  | c == '\n' = aesc ++ pad ++ nextLine (i + 1)
   | otherwise = aesc ++ [c] ++ rec (x + 1) y (i + 1)
   where c = text !! i
         l = length text
-        rec = displayText xMin xMax yMax text attr
-        nextLine = \j -> curSet xMin (y + 1) ++ rec xMin (y + 1) j
+        rec = displayText xMin xMax yMax text attr footer
+        nextLine = \ j -> curSet xMin (y + 1) ++ rec xMin (y + 1) j
+        pad = replicate (xMax - x) ' '
+        linePad = unlines
+                $ replicate (yMax - y - 1)
+                $ replicate (xMax - xMin) ' '
         aesc = case (filter (\ (j, _, _) -> j == i) attr,
                      filter (\ (_, k, _) -> k == i) attr) of
                  (sa, []) -> escAttr $ concat $ map (\ (_, _, a) -> a) sa
-                 (_ , _) -> reset
+                 (_ , _)  -> escAttr footer
 
 escAttr :: [Attr] -> String
 escAttr [] = ""
-escAttr ((Foreground (r, g, b)):as) = (rgbFg r g b) ++ escAttr as
-escAttr ((Background (r, g, b)):as) = (rgbBg r g b) ++ escAttr as
-escAttr (Reset:as) = reset ++ escAttr as
-escAttr ((Custom s):as) = s ++ escAttr as
+escAttr ((Foreground (r, g, b)) : as) = (rgbFg r g b) ++ escAttr as
+escAttr ((Background (r, g, b)) : as) = (rgbBg r g b) ++ escAttr as
+escAttr (Reset : as) = reset ++ escAttr as
+escAttr ((Custom s) : as) = s ++ escAttr as

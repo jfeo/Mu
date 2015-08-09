@@ -20,12 +20,13 @@ data Buffer = Buffer {
     bufOff  :: Int,
     bufText :: String,
     bufAttr :: [TextAttr],
+    bufDefAttr  :: [Attr],
     bufPos  :: Point,
     bufSize :: Point
 } deriving (Show, Read)
 
 instance Default Buffer where
-    def = Buffer 0 0 "" [] (0, 0) (0, 0)
+    def = Buffer 0 0 "" [] [Reset] (0, 0) (0, 0)
 
 data SelType = Normal
              | Line
@@ -50,33 +51,34 @@ data Input = Chars String
            | MRightArr
            | MLeftArr
            | Escape
+           | Backspace
            | Delete
            | None
              deriving (Show, Read, Eq)
 
-data Level = First
-           | BeforeInput
-           | BeforeState
-           | BeforeDisplay
-           | Last
-           deriving (Show, Read)
-
-data PlugIn = PlugIn {
-    plugLevel :: Level,
-    plugFun   :: Editor -> IO Editor
+data Command = Command {
+    cmdLevel   :: Int,
+    cmdStarted :: Bool,
+    cmdParse   :: String -> Maybe [String],
+    cmdArgs    :: [String],
+    cmdFun     :: Editor -> IO Editor
 }
 
-instance Show PlugIn where
-    show p = show $ plugLevel p
+instance Default Command where
+    -- level 14 is between resize and display
+    def = Command 14 False (\_ -> Nothing) [] return
+
+instance Show Command where
+    show p = show $ cmdLevel p
 
 -- The head of edBufs is the active buffer.
 data Editor = Editor {
-    edState   :: State,
-    edInput   :: Input,
-    edActive  :: String,
-    edBuffers :: [(String, Buffer)],
-    edVars    :: [(String, String)],
-    edPlugIns :: [PlugIn]
+    edState    :: State,
+    edInput    :: Input,
+    edActive   :: String,
+    edBuffers  :: [(String, Buffer)],
+    edVars     :: [(String, String)],
+    edCommands :: [(String, Command)]
 } deriving (Show)
 
 instance Default Editor where
@@ -84,3 +86,10 @@ instance Default Editor where
 
 mainBuf :: String
 mainBuf = "main"
+
+statusBuf :: String
+statusBuf = "status"
+
+commandBuf :: String
+commandBuf = "command"
+
