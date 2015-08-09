@@ -35,6 +35,7 @@ data SelType = Normal
 
 data State = Insert
            | Select SelType
+           | Other String
              deriving (Show, Read)
 
 data Input = Chars String
