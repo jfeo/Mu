@@ -84,4 +84,4 @@ update (Select _) Escape ed =
        edActive = mainBuf }
 
 -- For now, fail if the input is unmatched.
--- update s i _ = error $ "No state changing: " ++ (show s) ++ " " ++ (show i)
+update s i _ = error $ "No state changing: " ++ (show s) ++ " " ++ (show i)

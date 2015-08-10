@@ -6,9 +6,7 @@ module Mu.Commands (
 )where
 
 import Mu.Types
-import Mu.Utils
 import Data.Default
-import Data.Maybe (catMaybes)
 import System.Exit
 
 -- | Starts commands whoose 'cmdParse' functions returns
