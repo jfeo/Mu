@@ -1,6 +1,14 @@
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Mu.Types where
 
 import Data.Default
+
+-- | Instances on which a lookup can be performed.
+class Look k a | a -> k where
+    look :: k -> [a] -> Maybe a
+    prune :: k -> [a] -> [a]
 
 type Point = (Int, Int)
 
@@ -58,6 +66,7 @@ data Input = Chars String
              deriving (Show, Read, Eq)
 
 data Command = Command {
+    cmdName    :: String,
     cmdLevel   :: Int,
     cmdStarted :: Bool,
     cmdParse   :: String -> Maybe [String],
@@ -65,12 +74,22 @@ data Command = Command {
     cmdFun     :: Editor -> IO Editor
 }
 
+instance Look String Command where
+    look n cmds =
+      case filter (\c -> n == cmdName c) cmds of
+        []    -> Nothing
+        (x:_) -> Just x
+    
+    prune n cmds = filter (\c -> n /= cmdName c) cmds
+
+type CommandDef = (String, Command)
+
 instance Default Command where
     -- level 14 is between resize and display
-    def = Command 14 False (\_ -> Nothing) [] return
+    def = Command "" 14 False (\_ -> Nothing) [] return
 
 instance Show Command where
-    show p = show $ cmdLevel p
+    show p = (cmdName p) ++ ":" ++ (show $ cmdLevel p)
 
 -- The head of edBufs is the active buffer.
 data Editor = Editor {
@@ -79,7 +98,7 @@ data Editor = Editor {
     edActive   :: String,
     edBuffers  :: [(String, Buffer)],
     edVars     :: [(String, String)],
-    edCommands :: [(String, Command)]
+    edCommands :: [Command]
 } deriving (Show)
 
 instance Default Editor where

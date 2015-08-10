@@ -11,15 +11,18 @@ import Data.Default
 import Data.Maybe (catMaybes)
 import System.Exit
 
-startCommand :: String -> Editor -> Maybe Editor
-startCommand s e =
-  case catMaybes $ map (\ (n, c) -> enc n $ (cmdParse c) s) $ edCommands e of
-    []      -> Nothing
-    (n,a):_ -> Just $ change n e $ \ c -> 
-                        c { cmdStarted = True,
-                            cmdArgs    = a }
-  where enc _ Nothing  = Nothing
-        enc n (Just a) = Just (n,a)
+-- | Starts commands whoose 'cmdParse' functions returns
+--   a 'Just' value for the input string.
+startCommand :: String -> Editor -> Editor
+startCommand s e = e { edCommands = map (startIfParse s)
+                                  $ edCommands e } 
+
+startIfParse :: String -> Command -> Command
+startIfParse s c = case (cmdParse c) s of
+                     Nothing -> c
+                     Just a  -> c { cmdStarted = True
+                                  , cmdArgs    = a
+                                  }
 
 run :: [Command] -> Editor -> IO Editor
 run [] e     = return e

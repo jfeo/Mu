@@ -1,12 +1,25 @@
-module Mu.Display (
-  display
-) where
+-- | Commands for drawing the editor to the screen.
+module Mu.Commands.Display ( display
+                           , displayCmd
+                           ) where
 
+import Data.Default
 import Mu.Types
 import Mu.Utils
 import Mu.Outlib
 
--- | Displays the editor.
+-- | This is the core command which draw the editor on
+--   your console screen. All attribute-related commands
+--   should be executed before this.
+--   Default command level is 16.
+displayCmd :: Command
+displayCmd = def { cmdName    = "core_display"
+                 , cmdLevel   = 16
+                 , cmdFun     = display
+                 , cmdStarted = True
+                 }
+
+-- | See 'displayCmd'.
 display :: Editor -> IO Editor
 display ed = do
   clearScreen
@@ -40,9 +53,21 @@ displayBuffer b = do
         fot = escAttr f
     putUtfStr $ set ++ fot ++ utf ++ reset
 
-displayText :: Int -> Int -> Int -> 
-               String -> [TextAttr] -> [Attr] ->
-               Int -> Int -> Int -> String
+-- | Draws text in a box defined by 'xMin', 'xMax' and 'yMax,
+--   starting from the current cursor position, which must
+--   be set manually by the 'x' and 'y' arguments.
+--   To actually draw, the returned text must be written to 
+--   the terminal.
+displayText :: Int        -- ^ The minimal x coord (line start).
+            -> Int        -- ^ The maximal x coord.
+            -> Int        -- ^ The maximal y coord (last line).
+            -> String     -- ^ The text to display.
+            -> [TextAttr] -- ^ The attributes for the text.
+            -> [Attr]     -- ^ The attributes to default to.
+            -> Int        -- ^ The current x position.
+            -> Int        -- ^ The current y position.
+            -> Int        -- ^ The current text index.
+            -> String
 displayText xMin xMax yMax text attr footer x y i
   | i >= l = "" ++ pad ++ linePad
   | y >= yMax = "" ++ pad
@@ -62,6 +87,8 @@ displayText xMin xMax yMax text attr footer x y i
                  (sa, []) -> escAttr $ concat $ map (\ (_, _, a) -> a) sa
                  (_ , _)  -> escAttr footer
 
+-- | Creates a string of escape sequences for the
+--   giv attribtues.
 escAttr :: [Attr] -> String
 escAttr [] = ""
 escAttr ((Foreground (r, g, b)) : as) = (rgbFg r g b) ++ escAttr as

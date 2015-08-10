@@ -24,7 +24,8 @@ module Mu.Utils (
   readVar,
   setSize,
   setPos,
-  setText
+  setText,
+  stopCommand
 ) where
 
 import Mu.Types
@@ -143,6 +144,16 @@ setText n s ed =
   change n ed $ \ b ->
     b { bufText = s }
 
+stopCommand :: String -> Editor -> Editor
+stopCommand n ed = 
+  case n `look` cmds of
+    Nothing -> ed
+    Just v  ->
+      let v' = v { cmdStarted = False }
+      in  ed { edCommands = v' : prune n cmds }
+  where
+    cmds = edCommands ed
+
 {-- Changeable typeclass and instances --}
 
 class Eq k => Changeable k a b where
@@ -158,6 +169,6 @@ instance Changeable String Buffer Editor where
 instance Changeable String Command Editor where
   change :: String -> Editor -> (Command -> Command) -> Editor
   change k e f = 
-    case k `lookup` edCommands e of
+    case k `look` edCommands e of
       Nothing -> e
-      Just c  -> e { edCommands = (k, f c) : (exclude k $ edCommands e) }
+      Just c  -> e { edCommands = (f c) : (prune k $ edCommands e) }
