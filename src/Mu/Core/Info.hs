@@ -1,13 +1,14 @@
 -- | Updates features of the editor, such as
 --   the sizes of the buffers.
-module Mu.Commands.Info ( setInfoCmd
+module Mu.Core.Info ( setInfoCmd
                         , setInfo
                         ) where
 
 import Data.Default
-import Mu.Outlib
-import Mu.Types
-import Mu.Utils
+import Mu.API.Types
+import Mu.API.Utils
+import Mu.Core.Buffers
+import Mu.Core.Outlib
 
 -- | Updates the "xMax" and "yMax" variables, and sets
 --   the sizes of the three main buffers.
@@ -24,10 +25,10 @@ setInfo ed = do
   (termW,termH) <- termSize
   return $ showVar "xMax" termW
          $ showVar "xMax" termH 
-         $ setSize statusBuf termW 1
-         $ setPos  statusBuf 0 0
-         $ setSize mainBuf termW (termH-2)
-         $ setPos  mainBuf 0 1
-         $ setSize commandBuf termW 1
-         $ setPos  commandBuf 0 (termH-1)
+         $ setSize statusBufName termW 1
+         $ setPos  statusBufName 0 0
+         $ setSize mainBufName termW (termH-2)
+         $ setPos  mainBufName 0 1
+         $ setSize commandBufName termW 1
+         $ setPos  commandBufName 0 (termH-1)
          $ ed

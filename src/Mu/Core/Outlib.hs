@@ -1,4 +1,4 @@
-module Mu.Outlib(
+module Mu.Core.Outlib(
     clearScreen,
     curSet,
     delLine,

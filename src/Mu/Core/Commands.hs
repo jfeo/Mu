@@ -1,10 +1,10 @@
-module Mu.Commands.Core where
+module Mu.Core.Commands where
 
-import Mu.Types
-import Mu.Commands.Display
-import Mu.Commands.Info
-import Mu.Commands.Input
-import Mu.Commands.State
+import Mu.API.Types
+import Mu.Core.Input
+import Mu.Core.State
+import Mu.Core.Display
+import Mu.Core.Info
 
 -- | The super-basic editor commands, fundamental
 --   for doing anything.

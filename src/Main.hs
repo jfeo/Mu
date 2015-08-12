@@ -1,32 +1,44 @@
 module Main where
 
-import Mu.Commands
-import Mu.Commands.Core
-import Mu.Types
+import Mu.API.Command
+import Mu.API.Types
+import Mu.Core.Buffers
+import Mu.Core.Commands
+import Mu.Core.Shipped
 import Data.Default
-import Data.List (sortBy)
 
-color1 :: Color
-color1 = (5, 5, 5)
-
-color2 :: Color
-color2 = (0, 2, 1)
-
-loop :: Editor -> IO ()
-loop ed = do
-    let cmds = sortBy (\ c1 c2 -> (cmdLevel c1) `compare` (cmdLevel c2))
-             $ filter cmdStarted
+-- | Runs thrugh and executes all commands, in level
+--   order from n to m, starting from l. Once.
+--   Commands of a late level, started by an earlier level
+--   command, will be executed the same round.
+runLevels :: Int -> Int -> Int -> Editor -> IO Editor
+runLevels l n m ed = do
+    let cmds = filter cmdStarted
+             $ filter (\ c -> cmdLevel c == l)
              $ edCommands ed
     ed' <- run cmds ed
+    if (l + 1) > m then return ed'
+                   else runLevels (l + 1) n m ed'
+
+-- | Loops through all commands - in order - forever.
+loop :: Editor -> IO ()
+loop ed = do
+    let levels = map cmdLevel $ edCommands ed
+        minL   = minimum levels
+        maxL   = maximum levels
+    ed' <- runLevels minL minL maxL ed
     loop ed'
 
+-- | The main method!
 main :: IO ()
 main = do 
-    let as = [Foreground color1, Background color2]
-        bs = [(mainBuf, def),
-              (statusBuf,  def {bufDefAttr = as}),
-              (commandBuf, def {bufDefAttr = as})]
-    let ed = def { edActive   = mainBuf,
-                   edBuffers  = bs,
-                   edCommands = coreCommands}
+    let ed = def { edActive   = mainBufName
+                 , edBuffers  = coreBuffers
+                 , edCommands = coreCommands
+                             ++ shippedCommands
+                 , edVars = [ ("mainbuffer", mainBufName)
+                            , ("commandBuffer", commandBufName)
+                            , ("statusBuffer", statusBufName)
+                            ]
+                 }
     loop $ ed

@@ -3,11 +3,12 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 
-module Mu.Utils (
+module Mu.API.Utils (
   addBuffer,
   getBuffer,
   changeBuffer,
   inter,
+  exclude,
   ripOut,
   toTwo,
   cursTwo,
@@ -25,18 +26,20 @@ module Mu.Utils (
   setSize,
   setPos,
   setText,
-  stopCommand
+  cursX,
+  cursY,
+  lineIndex
 ) where
 
-import Mu.Types
-import Mu.Outlib
+import Mu.API.Types
+import Mu.Core.Outlib
 
-addBuffer :: String -> Buffer -> Editor -> Editor
-addBuffer k b e = 
-    e { edBuffers = (k, b) : edBuffers e } 
+addBuffer :: Buffer -> Editor -> Editor
+addBuffer b e = 
+    e { edBuffers = b : (prune (bufName b) $ edBuffers e) } 
 
 getBuffer :: String -> Editor -> Maybe Buffer
-getBuffer k e = lookup k (edBuffers e)
+getBuffer k e = look k $ edBuffers e
 
 exclude :: Eq a => a -> [(a,b)] -> [(a,b)]
 exclude _ [] = []
@@ -48,7 +51,7 @@ changeBuffer :: String -> Editor -> (Buffer -> Buffer) -> Editor
 changeBuffer k e f = case getBuffer k e of
                       Nothing -> e
                       Just b  ->
-                        e { edBuffers = (k, f b) : (exclude k $ edBuffers e) }
+                        e { edBuffers = f b : (prune k $ edBuffers e) }
 
 inter :: Int -> [a] -> [a] -> [a]
 inter i es ls = take i ls ++ es ++ drop i ls
@@ -144,31 +147,32 @@ setText n s ed =
   change n ed $ \ b ->
     b { bufText = s }
 
-stopCommand :: String -> Editor -> Editor
-stopCommand n ed = 
-  case n `look` cmds of
-    Nothing -> ed
-    Just v  ->
-      let v' = v { cmdStarted = False }
-      in  ed { edCommands = v' : prune n cmds }
+cursX :: Int -> String -> Int
+cursX c s = 
+  case filter (\ i -> i <= c) 
+     $ scanl (+) 0 
+     $ map length 
+     $ map ((:)' ')
+     $ lines s of
+    [] -> c
+    xs -> c - last xs
+
+cursY :: Int -> String -> Int
+cursY c s = length
+          $ drop 1
+          $ filter (\ i -> i <= c)
+          $ scanl (+) 0
+          $ map length 
+          $ map ((:)' ')
+          $ lines s
+
+lineIndex :: Int -> String -> Int
+lineIndex n s = if n >= length cs
+                then (length cs) - 1
+                else cs !! max 0 n
   where
-    cmds = edCommands ed
+    cs = scanl (+) 0
+       $ map length 
+       $ map ((:)' ')
+       $ lines s
 
-{-- Changeable typeclass and instances --}
-
-class Eq k => Changeable k a b where
-  change :: k -> b -> (a -> a) -> b
-
-instance Changeable String Buffer Editor where
-  change :: String -> Editor -> (Buffer -> Buffer) -> Editor
-  change k e f = 
-    case k `lookup` edBuffers e of
-      Nothing -> e
-      Just b  -> e { edBuffers = (k, f b) : (exclude k $ edBuffers e) }
-
-instance Changeable String Command Editor where
-  change :: String -> Editor -> (Command -> Command) -> Editor
-  change k e f = 
-    case k `look` edCommands e of
-      Nothing -> e
-      Just c  -> e { edCommands = (f c) : (prune k $ edCommands e) }

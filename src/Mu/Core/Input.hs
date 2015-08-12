@@ -2,14 +2,14 @@
 --   stdin. As of now there is limited support for modifier keys
 --   and no support for mouse interaction at all; this should be 
 --   fixed. A binding to the "libtermkey" c library could be a solution.
-module Mu.Commands.Input ( startInputCmd
-                         , startInput
-                         , getInputCmd
-                         , getInput
-                         ) where
+module Mu.Core.Input ( startInputCmd
+                     , startInput
+                     , getInputCmd
+                     , getInput
+                     ) where
 
-import Mu.Types
-import Mu.Utils
+import Mu.API.Types
+import Mu.API.Command
 import Data.Default
 import System.IO
 
@@ -66,7 +66,7 @@ waitOn = "\ESC["
 --   Timeout is 5 ms.
 getRest :: IO String
 getRest = do
-    w <- hWaitForInput stdin 5
+    w <- hWaitForInput stdin 2
     if w then do
         c <- getChar
         s <- getRest

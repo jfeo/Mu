@@ -1,12 +1,12 @@
 -- | Commands for drawing the editor to the screen.
-module Mu.Commands.Display ( display
-                           , displayCmd
-                           ) where
+module Mu.Core.Display ( display
+                      , displayCmd
+                      ) where
 
 import Data.Default
-import Mu.Types
-import Mu.Utils
-import Mu.Outlib
+import Mu.API.Types
+import Mu.API.Utils
+import Mu.Core.Outlib
 
 -- | This is the core command which draw the editor on
 --   your console screen. All attribute-related commands
@@ -25,7 +25,7 @@ display ed = do
   clearScreen
   let bufs = edBuffers ed
       act  = edActive ed
-  sequence_ $ map (\ (_, b) -> displayBuffer b) bufs
+  sequence_ $ map (\ b -> displayBuffer b) bufs
   case getBuffer act ed of
     Nothing -> fail $ "Could not find main buffer: " ++ act
     Just b -> do
