@@ -2,17 +2,15 @@
 
 ## Introduction
 
-Mu is a modal, terminal based text editor, which attempts to provide a "fat-free" environment for editing your text documents, without distractions.
+Mu is a modal, terminal based text editor, which attempts to provide a "fat-free" environment for editing your text documents.
 
-Mu can, of course, be used to edit any text file you want, but it is mostly thought as a code editor. Compared to the ever popular IDEs, which are monolithic giants, packing all of your tools in one single package with tonnes of features, but with restricted flexibility.
-
-Mu tries to be the exact opposite by following the old proverb:
+Mu can, of course, be used to edit any text file you want, but it is mostly thought as a code editor. To the ever popular IDEs, which are monolithic giants, packing all of your tools in one single package with tonnes of features, Mu tries to be the exact opposite: Few but powerful features in a small packet, fitting into a larger tool chain. By the old Unix proverb:
 
 >"Do one thing and do it well" - *Douglas Mcllroy*
 
 Mu does text-editing, and nothing else - out of the box at least.
 
-If you like features like autocompletion, syntax highlighting and in-editor debugging, Mu is equipped for great expandability.
+If you enjoy features like autocompletion, syntax highlighting and in-editor debugging, Mu is equipped for great expandability.
 
 ## Functional Core
 
