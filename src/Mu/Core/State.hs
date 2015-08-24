@@ -1,130 +1,141 @@
--- | Provides one command 'changeStateCmd', which is responsible
---   for change to the editor state, as well as mapping user input
---   to text editing functions.
-module Mu.Core.State ( changeStateCmd
+-- | Provides one command 'changeModeCmd', which is responsible
+--   for change to the muitor state, as well as mapping user input
+--   to text muiting functions.
+module Mu.Core.State ( changeStatePart
                      , changeState
                      ) where
 
 import Data.Default
 import Mu.Core.Buffers
-import Mu.API.Buffer
-import Mu.API.Command
-import Mu.API.Types
-import Mu.API.Utils
+import Mu.Buffer
+import Mu.Parser
+import Mu.Part
+import Mu.Types
+import Mu.Utils
 
 -- | The /core/ command which changes the state (in a
---   broad sense) of the editor, based on the edInput
+--   broad sense) of the muitor, based on the muInput
 --   field.
 --   Default command level is 8.
-changeStateCmd :: Command
-changeStateCmd = def { cmdName    = "core_state"
-                     , cmdLevel   = 8
-                     , cmdFun     = changeState
-                     , cmdStarted = True
-                     }
+changeStatePart :: Part
+changeStatePart = def { partName    = "core_state"
+                      , partMoment  = 50
+                      , partFun     = changeState
+                      , partStarted = True
+                      }
 
 -- | Wrapper function for 'update'.
-changeState :: Editor -> IO Editor
-changeState ed = return $ update (edState ed) (edInput ed) ed
+changeState :: Part -> Mu -> IO Mu
+changeState _ mu = return $ update (muMode mu) (muInput mu) mu
 
--- | Updates the state of the editor by pattern matching.
---   The 'State' and 'Input' values should also match those
---   of the Editor value.
-update :: State -> Input -> Editor -> Editor
-update _ None ed = ed
+-- | Updates the state of the muitor by pattern matching.
+--   The 'Mode' and 'Input' values should also match those
+--   of the Mu value.
+update :: Mode -> Input -> Mu -> Mu
+update _ None mu = mu
 
-{-- State changes for Insert mode --}
+{-- Mode changes for Insert mode --}
 
-update Insert (Chars s) ed =
-  insertText mainBufName s ed
+update Insert (Chars s) mu =
+  changeBuffer mainBufName (insertText s) mu
 
-update Insert Backspace ed =
-  deleteText mainBufName (-1) ed 
+update Insert Backspace mu =
+  changeBuffer mainBufName (deleteText . moveCurs (-1)) mu 
 
-update Insert Delete ed =
-  deleteText mainBufName 0 ed 
+update Insert Delete mu =
+  changeBuffer mainBufName deleteText mu 
 
-update Insert LeftArr ed =
-  moveCurs mainBufName (-1) ed
+update Insert LeftArr mu =
+  changeBuffer mainBufName (moveCurs (-1)) mu
   
-update Insert RightArr ed =
-  moveCurs mainBufName 1 ed
+update Insert SLeftArr mu =
+  changeBuffer mainBufName
+    (\ b -> let t = bufText b
+                (_, cY)
+                  = indexXY b bufCurs
+                c = indexOfLine cY t
+             in fixOffset
+              $ b { bufCurs = c }
+    ) mu
 
-update Insert UpArr ed =
-  change mainBufName ed $ \b ->
-    let c = bufCurs b
-        t = bufText b
-        cY = cursY c t
-        cX = cursX c t
-        li = lineIndex (cY-1) t
-        ll = length $ (lines t) !! (cY-1)
-        c' = li + (min ll cX)
-     in if cY == 0 then b
-                   else fixOffset $ b { bufCurs = c' }
+update Insert RightArr mu =
+  changeBuffer mainBufName (moveCurs 1) mu
 
-update Insert DownArr ed =
-  change mainBufName ed $ \b ->
-    let c = bufCurs b
-        t = bufText b
-        cY = cursY c t
-        mY = length $ lines t
-        cX = cursX c t
-        li = lineIndex (cY+1) t
-        ll = length $ (lines t) !! (cY+1)
-        c' = li + (min ll cX)
-     in if (cY+1) >= mY then b
-                        else fixOffset $ b { bufCurs = c' }
+update Insert SRightArr mu =
+  changeBuffer mainBufName 
+    (\ b -> let t = bufText b
+                l = (length $ lines t) - 1
+                (_,cY)
+                  = indexXY b bufCurs
+                c = indexOfLine (min (cY + 1) l) t
+              in fixOffset
+               $ b { bufCurs = max 0 $ c - 1}
+    ) mu
 
-update Insert Escape ed = setText commandBufName "" $ 
-  ed { edState  = (Select Normal),
-       edActive = commandBufName }
+update Insert UpArr mu =
+  changeBuffer mainBufName 
+    (\ b -> let t  = bufText b
+                (cX, cY)
+                   = indexXY b bufCurs
+                li = indexOfLine (cY - 1) t
+                ll = length $ (lines t) !! (cY - 1)
+                c' = li + min ll cX
+            in if cY <= 0 then b
+                          else fixOffset $ b { bufCurs = c' }
+    ) mu
 
-{-- State changes for Select mode --}
+update Insert DownArr mu =
+  changeBuffer mainBufName 
+    (\ b -> let t  = bufText b
+                (cX, cY)
+                   = indexXY b bufCurs
+                mY = (length $ lines t) - 1
+                li = indexOfLine (cY + 1) t
+                ll = length $ (lines t) !! (cY + 1)
+                c' = li + (min ll cX)
+            in if cY == mY then b
+                           else fixOffset $ b { bufCurs = c' }
+    ) mu
 
-update (Select _) (Chars "\n") ed = ed' { edState  = Insert
-                                        , edActive = mainBufName
-                                        }
-  where 
-    ed' = maybe ed id 
-        $ withBuffer commandBufName ed $ \ b ->
-            startCommands (bufText b) ed 
+update Insert Escape mu = changeBuffer commandBufName (setCurs 0 . setText "") 
+                        $ mu { muMode  = (Select Normal)
+                             , muActive = commandBufName 
+                             }
 
-update (Select _) (Chars s) ed =
-  insertText commandBufName s ed
+{-- Mode changes for Select mode --}
 
-update (Select _) Backspace ed =
-  deleteText commandBufName (-1) ed
+update (Select _) (Chars "\n") mu = 
+  case parseArguments t of
+    Nothing     -> mu
+    Just []     -> mu
+    Just (n:as) -> setActive mainBufName
+                 $ setMode Insert
+                 $ changePart n (setArgs as . setStarted True)
+                 $ mu
+  where
+    t   = option "" 
+        $ withBuffer commandBufName mu bufText
 
-update (Select _) Delete ed =
-  deleteText commandBufName 0 ed
+update (Select _) (Chars s) mu =
+  changeBuffer commandBufName (insertText s) mu
 
-update (Select _) LeftArr ed =
-  moveCurs commandBufName (-1) ed
+update (Select _) Backspace mu =
+  changeBuffer commandBufName (deleteText . moveCurs (-1)) mu
 
-update (Select _) RightArr ed =
-  moveCurs commandBufName 1 ed
+update (Select _) Delete mu =
+  changeBuffer commandBufName deleteText mu
 
-update (Select _) Escape ed =
-  ed { edState  = Insert,
-       edActive = mainBufName }
+update (Select _) LeftArr mu =
+  changeBuffer commandBufName (moveCurs (-1)) mu
+
+update (Select _) RightArr mu =
+  changeBuffer commandBufName (moveCurs  1) mu
+
+update (Select _) Escape mu =
+  mu { muMode   = Insert
+     , muActive = mainBufName
+     }
 
 -- For now, fail if the input is unmatched.
-update s i _ = error $ "No state changing: " ++ (show s) ++ " " ++ (show i)
-
-fixOffset :: Buffer -> Buffer
-fixOffset b
-  | diff >= h   = fixOffset
-                $ b { bufOff = min ln $ lineIndex (offY + 1) text }
-  | curY < offY = fixOffset
-                $ b { bufOff = max 0 $ lineIndex  (offY - 1) text }
-  | otherwise   = b
-  where
-    text = bufText b
-    ln   = length text
-    off  = bufOff b
-    offY = cursY off text
-    cur  = bufCurs b
-    curY = cursY cur text
-    diff = curY - offY
-    (_,h) = bufSize b
+update _ _ mu = mu
 

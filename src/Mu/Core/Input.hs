@@ -2,36 +2,36 @@
 --   stdin. As of now there is limited support for modifier keys
 --   and no support for mouse interaction at all; this should be 
 --   fixed. A binding to the "libtermkey" c library could be a solution.
-module Mu.Core.Input ( startInputCmd
+module Mu.Core.Input ( startInputPart
                      , startInput
-                     , getInputCmd
+                     , getInputPart
                      , getInput
                      ) where
 
-import Mu.API.Types
-import Mu.API.Command
+import Mu.Types
+import Mu.Part
 import Data.Default
 import System.IO
 
 -- | Prepares the program for input by sensible input
 --   configuration.
 --   Default command level is 0.
-startInputCmd :: Command
-startInputCmd = def { cmdName  = "core_startInput"
-                    , cmdLevel = 0
-                    , cmdFun   = startInput
-                    , cmdStarted = True
-                    }
+startInputPart :: Part
+startInputPart = def { partName  = "core_startInput"
+                     , partMoment = -25
+                     , partFun   = startInput
+                     , partStarted = True
+                     }
 
 -- | The /main/ command for getting user input. Parsed
 --   keyboard input is inserted into the 'edInput' field.
 --   Default command level is 4.
-getInputCmd :: Command
-getInputCmd = def { cmdName  = "core_getInput"
-                  , cmdLevel = 4
-                  , cmdFun   = getInput
-                  , cmdStarted = True
-                  }
+getInputPart :: Part
+getInputPart = def { partName  = "core_getInput"
+                   , partMoment = 0
+                   , partFun   = getInput
+                   , partStarted = True
+                   }
 
 -- | Parses raw input into corresponding 'Input'.
 parseInput :: String -> Input
@@ -85,16 +85,16 @@ getRaw = do
   return $ c : r
 
 -- | Sets suitabe input settings for a text-editor.
-startInput :: Editor -> IO Editor
-startInput ed = do
+startInput :: Part -> Mu -> IO Mu
+startInput _ mu = do
     hSetEcho stdin False
     hSetBuffering stdin NoBuffering
-    return $ stopCommand "core_startInput" ed
+    return $ stopPart "core_startInput" mu
 
 -- | Gets input from the keyboard and updates
---   the edInput field of the editor.
-getInput :: Editor -> IO Editor
-getInput ed = do
+--   the muInput field of the muitor.
+getInput :: Part -> Mu -> IO Mu
+getInput _ mu = do
     s <- getRaw
     let p = parseInput s
-    return $ ed { edInput = p }
+    return $ mu { muInput = p }

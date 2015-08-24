@@ -1,34 +1,41 @@
 -- | Updates features of the editor, such as
 --   the sizes of the buffers.
-module Mu.Core.Info ( setInfoCmd
+module Mu.Core.Info ( setInfoPart
                         , setInfo
                         ) where
 
 import Data.Default
-import Mu.API.Types
-import Mu.API.Utils
+import Mu.Types
+import Mu.Buffer
+import Mu.Var
 import Mu.Core.Buffers
 import Mu.Core.Outlib
 
 -- | Updates the "xMax" and "yMax" variables, and sets
 --   the sizes of the three main buffers.
-setInfoCmd :: Command
-setInfoCmd = def { cmdName    = "core_info"
-                 , cmdLevel   = 12
-                 , cmdFun     = setInfo
-                 , cmdStarted = True
-                 }
+setInfoPart :: Part
+setInfoPart = def { partName    = "core_info"
+                  , partMoment  = 75
+                  , partFun     = setInfo
+                  , partStarted = True
+                  }
 
--- | See 'setInfoCmd'.
-setInfo :: Editor -> IO Editor
-setInfo ed = do
+-- | See 'setInfoPart'.
+setInfo :: Part -> Mu -> IO Mu
+setInfo _ mu = do
   (termW,termH) <- termSize
   return $ showVar "xMax" termW
-         $ showVar "xMax" termH 
-         $ setSize statusBufName termW 1
-         $ setPos  statusBufName 0 0
-         $ setSize mainBufName termW (termH-2)
-         $ setPos  mainBufName 0 1
-         $ setSize commandBufName termW 1
-         $ setPos  commandBufName 0 (termH-1)
-         $ ed
+         $ showVar "yMax" termH 
+         $ changeBuffer statusBufName
+            (\b -> setPos 0 0 
+                 $ setSize termW 1 b
+            )
+         $ changeBuffer mainBufName
+            (\b -> setPos 0 1 
+                 $ setSize termW (termH-2) b
+            )
+         $ changeBuffer commandBufName
+            (\b -> setPos 0 (termH - 1) 
+                 $ setSize termW 1 b
+            )
+         $ mu

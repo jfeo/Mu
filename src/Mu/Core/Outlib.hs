@@ -7,6 +7,8 @@ module Mu.Core.Outlib(
     reset,
     rgbFg,
     rgbBg,
+    colorFg,
+    colorBg
 ) where
 
 import qualified Data.ByteString.Char8 as C
@@ -23,6 +25,12 @@ rgbFg r g b = csi ++ "38;5;" ++ (show n) ++ "m"
 rgbBg :: Int -> Int -> Int -> String
 rgbBg r g b = csi ++ "48;5;" ++ (show n) ++ "m" 
   where n = 16 + 36 * r + 6 * g + b
+
+colorFg :: Int -> String
+colorFg c = csi ++ "38;5;" ++ (show c) ++ "m" 
+
+colorBg :: Int -> String
+colorBg c = csi ++ "48;5;" ++ (show c) ++ "m" 
 
 termw :: IO Int
 termw = do
